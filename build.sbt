@@ -1,5 +1,6 @@
 val reactiveFlows = project
   .in(file("."))
+  .configs(MultiJvm)
   .enablePlugins(AutomateHeaderPlugin, GitVersioning)
 
 organization    := "de.heikoseeberger"
@@ -16,21 +17,24 @@ scalacOptions ++= List(
   "-encoding", "UTF-8"
 )
 
-unmanagedSourceDirectories.in(Compile) := List(scalaSource.in(Compile).value)
-unmanagedSourceDirectories.in(Test)    := List(scalaSource.in(Test).value)
+unmanagedSourceDirectories.in(Compile)  := List(scalaSource.in(Compile).value)
+unmanagedSourceDirectories.in(Test)     := List(scalaSource.in(Test).value)
+unmanagedSourceDirectories.in(MultiJvm) := List(scalaSource.in(MultiJvm).value)
 
 val akkaVersion       = "2.4.0-RC2"
 val akkaHttpVersion   = "1.0"
 libraryDependencies ++= List(
-  "com.typesafe.akka"        %% "akka-actor"                        % akkaVersion,
-  "com.typesafe.akka"        %% "akka-http-experimental"            % akkaHttpVersion,
-  "com.typesafe.akka"        %% "akka-http-spray-json-experimental" % akkaHttpVersion,
-  "de.heikoseeberger"        %% "akka-log4j"                        % "0.3.2",
-  "de.heikoseeberger"        %% "akka-sse"                          % "1.1.0",
-  "org.apache.logging.log4j" %  "log4j-core"                        % "2.3",
-  "com.typesafe.akka"        %% "akka-http-testkit-experimental"    % akkaHttpVersion % "test",
-  "com.typesafe.akka"        %% "akka-testkit"                      % akkaVersion     % "test",
-  "org.scalatest"            %% "scalatest"                         % "2.2.5"         % "test"
+  "com.typesafe.akka"        %% "akka-cluster-tools"                 % akkaVersion,
+  "com.typesafe.akka"        %% "akka-distributed-data-experimental" % akkaVersion,
+  "com.typesafe.akka"        %% "akka-http-experimental"             % akkaHttpVersion,
+  "com.typesafe.akka"        %% "akka-http-spray-json-experimental"  % akkaHttpVersion,
+  "de.heikoseeberger"        %% "akka-log4j"                         % "0.3.2",
+  "de.heikoseeberger"        %% "akka-sse"                           % "1.1.0",
+  "org.apache.logging.log4j" %  "log4j-core"                         % "2.3",
+  "com.typesafe.akka"        %% "akka-http-testkit-experimental"     % akkaHttpVersion % "test",
+  "com.typesafe.akka"        %% "akka-multi-node-testkit"            % akkaVersion     % "test",
+  "com.typesafe.akka"        %% "akka-testkit"                       % akkaVersion     % "test",
+  "org.scalatest"            %% "scalatest"                          % "2.2.5"         % "test"
 )
 
 testFrameworks := List(sbt.TestFrameworks.ScalaTest)
@@ -42,9 +46,13 @@ preferences := preferences.value
   .setPreference(AlignSingleLineCaseStatements, true)
   .setPreference(AlignSingleLineCaseStatements.MaxArrowIndent, 100)
   .setPreference(DoubleIndentClassDeclaration, true)
+inConfig(MultiJvm)(SbtScalariform.configScalariformSettings)
+inConfig(MultiJvm)(compileInputs.in(compile) := { format.value; compileInputs.in(compile).value })
 
 import de.heikoseeberger.sbtheader.license.Apache2_0
 HeaderPlugin.autoImport.headers := Map("scala" -> Apache2_0("2015", "Heiko Seeberger"))
+AutomateHeaderPlugin.automateFor(Compile, Test, MultiJvm)
+HeaderPlugin.settingsFor(Compile, Test, MultiJvm)
 
 test.in(Test)         := { scalastyle.in(Compile).toTask("").value; test.in(Test).value }
 scalastyleFailOnError := true
