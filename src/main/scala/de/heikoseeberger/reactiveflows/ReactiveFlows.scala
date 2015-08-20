@@ -22,25 +22,31 @@ object ReactiveFlows {
 
   // $COVERAGE-OFF$
   final val Name = "reactive-flows"
-  // $COVERAGE-ON$
 
-  def props(mediator: ActorRef, replicator: ActorRef): Props = Props(new ReactiveFlows(mediator, replicator))
+  def props(mediator: ActorRef, replicator: ActorRef, flowShardRegion: ActorRef): Props =
+    Props(new ReactiveFlows(mediator, replicator, flowShardRegion))
+  // $COVERAGE-ON$
 }
 
-class ReactiveFlows(mediator: ActorRef, replicator: ActorRef) extends Actor with ActorLogging with ActorSettings {
+class ReactiveFlows(mediator: ActorRef, replicator: ActorRef, flowShardRegion: ActorRef)
+    extends Actor with ActorLogging with ActorSettings {
 
   override val supervisorStrategy = SupervisorStrategy.stoppingStrategy
 
   private val flowFacade = context.watch(createFlowFacade())
 
   context.watch(createHttpService())
+  context.watch(createSharedJournalManager())
   log.info("Up and running")
 
   override def receive = {
     case Terminated(actor) => onTerminated(actor)
   }
 
-  protected def createFlowFacade(): ActorRef = context.actorOf(FlowFacade.props(mediator, replicator), FlowFacade.Name)
+  protected def createFlowFacade(): ActorRef = context.actorOf(
+    FlowFacade.props(mediator, replicator, flowShardRegion),
+    FlowFacade.Name
+  )
 
   protected def createHttpService(): ActorRef = {
     import settings.httpService._
@@ -51,6 +57,10 @@ class ReactiveFlows(mediator: ActorRef, replicator: ActorRef) extends Actor with
   }
 
   // $COVERAGE-OFF$
+  protected def createSharedJournalManager(): ActorRef = context.actorOf(
+    SharedJournalManager.props, SharedJournalManager.Name
+  )
+
   protected def onTerminated(actor: ActorRef): Unit = {
     log.error("Terminating the system because {} terminated!", actor)
     context.system.terminate()

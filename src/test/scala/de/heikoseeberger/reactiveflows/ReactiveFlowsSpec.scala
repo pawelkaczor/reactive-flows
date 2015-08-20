@@ -27,7 +27,10 @@ class ReactiveFlowsSpec extends BaseAkkaSpec {
       EventFilter.info(occurrences = 1, message = "Up and running").intercept {
         val mediator = TestProbe()
         val replicator = TestProbe()
-        system.actorOf(Props(new ReactiveFlows(mediator.ref, replicator.ref)))
+        val flowShardRegion = TestProbe()
+        actor(new ReactiveFlows(mediator.ref, replicator.ref, flowShardRegion.ref) {
+          override protected def createSharedJournalManager() = context.actorOf(Props.empty)
+        })
       }
     }
 
@@ -37,7 +40,10 @@ class ReactiveFlowsSpec extends BaseAkkaSpec {
 
       val mediator = TestProbe()
       val replicator = TestProbe()
-      val reactiveFlows = system.actorOf(ReactiveFlows.props(mediator.ref, replicator.ref))
+      val flowShardRegion = TestProbe()
+      val reactiveFlows = actor(new ReactiveFlows(mediator.ref, replicator.ref, flowShardRegion.ref) {
+        override protected def createSharedJournalManager() = context.actorOf(Props.empty)
+      })
       sender.awaitAssert {
         system.actorSelection(reactiveFlows.path / FlowFacade.Name) ! Identify(None)
         sender.expectMsgPF() { case ActorIdentity(_, Some(_)) => () }
@@ -50,10 +56,12 @@ class ReactiveFlowsSpec extends BaseAkkaSpec {
       val probe = TestProbe()
       val mediator = TestProbe()
       val replicator = TestProbe()
-      actor(new ReactiveFlows(mediator.ref, replicator.ref) {
+      val flowShardRegion = TestProbe()
+      actor(new ReactiveFlows(mediator.ref, replicator.ref, flowShardRegion.ref) {
         override protected def createFlowFacade() = actor(context)(new Act {
           context.stop(self)
         })
+        override protected def createSharedJournalManager() = context.actorOf(Props.empty)
         override protected def onTerminated(actor: ActorRef) = probe.ref ! "terminated"
       })
 
@@ -64,13 +72,15 @@ class ReactiveFlowsSpec extends BaseAkkaSpec {
       val probe = TestProbe()
       val mediator = TestProbe()
       val replicator = TestProbe()
-      actor(new ReactiveFlows(mediator.ref, replicator.ref) {
+      val flowShardRegion = TestProbe()
+      actor(new ReactiveFlows(mediator.ref, replicator.ref, flowShardRegion.ref) {
         override protected def createFlowFacade() = actor(context)(new Act {
           self ! "blow-up"
           become {
             case "blow-up" => sys.error("Blown up!")
           }
         })
+        override protected def createSharedJournalManager() = context.actorOf(Props.empty)
         override protected def onTerminated(actor: ActorRef) = probe.ref ! "terminated"
       })
 
