@@ -20,12 +20,17 @@ unmanagedSourceDirectories.in(Compile) := List(scalaSource.in(Compile).value)
 unmanagedSourceDirectories.in(Test)    := List(scalaSource.in(Test).value)
 
 val akkaVersion       = "2.4.0-RC2"
+val akkaHttpVersion   = "1.0"
 libraryDependencies ++= List(
-  "com.typesafe.akka"        %% "akka-actor"   % akkaVersion,
-  "de.heikoseeberger"        %% "akka-log4j"   % "0.3.2",
-  "org.apache.logging.log4j" %  "log4j-core"   % "2.3",
-  "com.typesafe.akka"        %% "akka-testkit" % akkaVersion % "test",
-  "org.scalatest"            %% "scalatest"    % "2.2.5"     % "test"
+  "com.typesafe.akka"        %% "akka-actor"                        % akkaVersion,
+  "com.typesafe.akka"        %% "akka-http-experimental"            % akkaHttpVersion,
+  "com.typesafe.akka"        %% "akka-http-spray-json-experimental" % akkaHttpVersion,
+  "de.heikoseeberger"        %% "akka-log4j"                        % "0.3.2",
+  "de.heikoseeberger"        %% "akka-sse"                          % "1.1.0",
+  "org.apache.logging.log4j" %  "log4j-core"                        % "2.3",
+  "com.typesafe.akka"        %% "akka-http-testkit-experimental"    % akkaHttpVersion % "test",
+  "com.typesafe.akka"        %% "akka-testkit"                      % akkaVersion     % "test",
+  "org.scalatest"            %% "scalatest"                         % "2.2.5"         % "test"
 )
 
 testFrameworks := List(sbt.TestFrameworks.ScalaTest)
@@ -47,3 +52,7 @@ scalastyleFailOnError := true
 coverageMinimum          := 100
 coverageFailOnMinimum    := true
 coverageExcludedPackages := ".*App"
+
+addCommandAlias("rf1", "reStart -Dakka.remote.netty.tcp.port=2551 -Dreactive-flows.http-service.port=9001")
+addCommandAlias("rf2", "run     -Dakka.remote.netty.tcp.port=2552 -Dreactive-flows.http-service.port=9002")
+addCommandAlias("rf3", "run     -Dakka.remote.netty.tcp.port=2553 -Dreactive-flows.http-service.port=9003")
