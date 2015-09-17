@@ -26,7 +26,8 @@ import akka.pattern.{ ask, pipe }
 import akka.stream.scaladsl.{ ImplicitMaterializer, Source }
 import akka.stream.{ Materializer, OverflowStrategy }
 import akka.util.Timeout
-import de.heikoseeberger.akkasse.EventStreamMarshalling
+import de.heikoseeberger.akkasse.{ ServerSentEvent, EventStreamMarshalling }
+import de.heikoseeberger.reactiveflows.Flow.MessageEvent
 import scala.concurrent.ExecutionContext
 
 object HttpService {
@@ -115,14 +116,18 @@ object HttpService {
       }
     }
 
+    println("Creating messageEventsSource")
+    val messageEventsSource: Source[ServerSentEvent, Unit] = Source.actorRef[MessageEvent](eventBufferSize, OverflowStrategy.dropHead)
+      .map(ServerSentEventProtocol.messageEventToServerSentEvent)
+      .mapMaterializedValue(source => mediator ! DistributedPubSubMediator.Subscribe(Flow.MessageEventKey, source))
+
     def messageEvents = path("message-events") {
-      get {
-        complete {
-          Source.actorRef[Flow.MessageEvent](eventBufferSize, OverflowStrategy.dropHead)
-            .map(ServerSentEventProtocol.messageEventToServerSentEvent)
-            .mapMaterializedValue(source => mediator ! DistributedPubSubMediator.Subscribe(Flow.MessageEventKey, source))
+        get {
+          complete {
+            println("Processing /message-events request")
+            messageEventsSource
+          }
         }
-      }
     }
     // format: ON
 
